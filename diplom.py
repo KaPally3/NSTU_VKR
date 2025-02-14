@@ -16,12 +16,12 @@ wl = 1.0e-2
 dz = 100.0
 
 PI = np.pi
-ENERGY = 30
-LIMBDA = 1e-6 * 1239.8 / (ENERGY * 1e3)
+EN = 30
+LIMBDA = 1e-6 * 1239.8 / (EN * 1e3)
 K = 2 * PI / LIMBDA
 MU = 3.0235443337462318
 BETA = MU * LIMBDA / (4 * PI)
-DELTA = 5.43e-4 / (ENERGY**2)
+DELTA = 5.43e-4 / (EN**2)
 FOCAL = 8000
 THETA = 130
 
@@ -38,7 +38,7 @@ sxmax = np.sum((xs > sxmin) & (xs < sxmax)) / res * dx / 2
 sxmin = -sxmax
 symax = np.sum((ys > symin) & (ys < symax)) / res * dy / 2
 symin = -symax
-print(sxmin, sxmax, symin, symax)
+#print(sxmin, sxmax, symin, symax)
 
 fx = np.fft.fftfreq(res, d=dx)
 fy = np.fft.fftfreq(res, d=dy)
@@ -48,12 +48,12 @@ fy = np.fft.fftshift(fy)
 x_screen = fx * wl * dz
 y_screen = fy * wl * dz
 
-formula_one = 1  # (ENERGY * np.exp(1j * K * np.sqrt(xs2 + ys2)) / np.sqrt(xs2 + ys2)) * np.exp(-1j * K * (DELTA - 1j * BETA) * ys**2 / (2 * FOCAL * DELTA))
+formula_one = EN * np.exp(1j * K * np.sqrt(xs ** 2 + 2 * FOCAL)) / np.sqrt(xs ** 2 + 2 * FOCAL) * np.exp(-1j * K * (DELTA - 1j * BETA) * xs ** 2 / (2 * FOCAL * DELTA))
 
-formula_two = np.exp(PI * 1j / (wl * dz) * (xs**2 + ys**2))
+formula_two = np.exp(PI * 1j / (wl * dz) * (xs ** 2))
 
 formula_three = (
-    -1j / wl * np.exp(2 * PI * 1j / wl * (dz + (x_screen**2 + y_screen**2) / 2 / dz))
+        -1j / wl * np.exp(2 * PI * 1j / wl * (2 * FOCAL + (x_screen ** 2) / 2 / 2 / FOCAL))
 )
 
 out_source = np.fft.fft2(source * formula_one * formula_two)
@@ -67,7 +67,7 @@ formula_exp_y = a * np.sinc((symax - symin) * y_screen / (wl * dz))
 norm_x = np.abs(out_source).sum(axis=0)
 norm_x /= np.max(norm_x)
 
-plt.figure(figsize=(10, 10))
+plt.figure(figsize=(40, 20))
 plt.plot(x_screen, norm_x, "b.", x_screen, np.abs(formula_exp_x), "r-")
 
 plt.show()
