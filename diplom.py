@@ -1,3 +1,4 @@
+## Моделирование мультипризматических рентгеновских линз: влияние дефектов материала на оптические свойства линз
 import sys
 import numpy as np
 import argparse
@@ -29,18 +30,22 @@ x_screen = fx * LAMBDA * lens_screen_distance
 
 lens_thickness = xs**2 / (2 * FOCAL * DELTA)
 
-formula_one = (
-    EN
-    * np.exp(1j * K * np.sqrt(xs**2 + source_lens_distance**2))
-    / np.sqrt(xs**2 + source_lens_distance**2)
-    * np.exp(-1j * K * (DELTA - 1j * BETA) * lens_thickness)
-)
+Xsc = xmax / 2
+dx = np.linspace(-Xsc, Xsc, 10)
 
-fig, ax1 = plt.subplots()
-ax2 = ax1.twinx()
-ax1.plot(xs, np.abs(formula_one))
-ax2.plot(xs, np.angle(formula_one))
-plt.show()
+for i in dx:
+    formula_one = (
+        EN
+        * np.exp(1j * K * np.sqrt((xs - i)**2 + source_lens_distance**2))
+        / np.sqrt((xs - i)**2 + source_lens_distance**2)
+        * np.exp(-1j * K * (DELTA - 1j * BETA) * lens_thickness)
+    )
+
+    fig, ax1 = plt.subplots()
+    ax2 = ax1.twinx()
+    ax1.plot(xs, np.abs(formula_one))
+    ax2.plot(xs, np.angle(formula_one))
+    plt.show()
 
 formula_two = np.exp(PI * 1j / (LAMBDA * lens_screen_distance) * (xs**2))
 
