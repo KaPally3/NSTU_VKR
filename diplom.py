@@ -31,8 +31,8 @@ x_screen = fx * LAMBDA * lens_screen_distance
 lens_thickness = xs**2 / (2 * FOCAL * DELTA)
 
 Xsc = xmax / 2
-dx = np.linspace(-Xsc, Xsc, 10)
-
+dx = np.linspace(-Xsc, Xsc, 1000)
+list_points = []
 for i in dx:
     formula_one = (
         EN
@@ -41,32 +41,55 @@ for i in dx:
         * np.exp(-1j * K * (DELTA - 1j * BETA) * lens_thickness)
     )
 
-    fig, ax1 = plt.subplots()
-    ax2 = ax1.twinx()
-    ax1.plot(xs, np.abs(formula_one))
-    ax2.plot(xs, np.angle(formula_one))
-    plt.show()
+    diff_result = formula_one[:-1] - formula_one[1:]
+    point_inflection = max(formula_one)
+    index = 0
+    for i in range(len(diff_result) - 1):
+        if diff_result[i] > 0 and diff_result[i + 1] < 0:
+            if abs(formula_one[i]) < point_inflection:
+                point_inflection = abs(formula_one[i])
+                index = i
 
-formula_two = np.exp(PI * 1j / (LAMBDA * lens_screen_distance) * (xs**2))
+    #print(diff_result)
+    print(point_inflection, index)
+    list_points.append(point_inflection)
 
-formula_three = (
-    -1j
-    / LAMBDA
-    * np.exp(
-        2
-        * PI
-        * 1j
+
+    #fig, ax1 = plt.subplots()
+    #ax2 = ax1.twinx()
+    #ax1.plot(xs, np.abs(formula_one))
+    #ax2.plot(xs, np.angle(formula_one))
+    #plt.show()
+    #exit(1)
+    #print(np.abs(np.diff(formula_one)))
+
+    formula_two = np.exp(PI * 1j / (LAMBDA * lens_screen_distance) * (xs**2))
+
+    formula_three = (
+        -1j
         / LAMBDA
-        * (lens_screen_distance + (x_screen**2) / 2 / lens_screen_distance)
+        * np.exp(
+            2
+            * PI
+            * 1j
+            / LAMBDA
+            * (lens_screen_distance + (x_screen**2) / 2 / lens_screen_distance)
+        )
     )
-)
 
-out_source = np.fft.fft(formula_one * formula_two)
-out_source = formula_three * np.fft.fftshift(out_source)
+    out_source = np.fft.fft(formula_one * formula_two)
+    out_source = formula_three * np.fft.fftshift(out_source)
 
 
-fig, ax1 = plt.subplots()
-ax2 = ax1.twinx()
-ax1.plot(x_screen, np.abs(out_source))
-ax2.plot(x_screen, np.angle(out_source))
+    #fig, ax1 = plt.subplots()
+    #ax2 = ax1.twinx()
+    #ax1.plot(x_screen, np.abs(out_source))
+    #ax2.plot(x_screen, np.angle(out_source))
+
+fig, ax3 = plt.subplots()
+ax3.plot(dx, list_points)
 plt.show()
+
+
+
+
