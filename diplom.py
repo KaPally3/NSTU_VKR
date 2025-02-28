@@ -30,11 +30,11 @@ def read_coordinates_and_plot(file_path):
     return x, y
 
 
-def rotate_graphic(angle_rad, x, y):
+def rotate_graphic(angle_deg, x, y):
 
     pivot = np.array([x[0], y[0]])
 
-    angle = -np.radians(angle_rad)
+    angle = -np.radians(angle_deg)
 
     rotation_matrix = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
 
@@ -46,6 +46,27 @@ def rotate_graphic(angle_rad, x, y):
 
     x_rotated = rotated_coordinates[0, :]
     y_rotated = rotated_coordinates[1, :]
+
+    return x_rotated, y_rotated
+
+
+def rotate_graphic_new(angle_deg, x, y):
+
+    pivot = np.array([x[0], y[0]])
+
+    angle = -np.radians(angle_deg)
+
+    rotation_matrix = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+
+    x_shifted = x - pivot[0]
+    y_shifted = y - pivot[1]
+
+    coordinates = np.stack((x_shifted, y_shifted), axis=0)
+
+    rotated_coordinates = np.dot(rotation_matrix, coordinates)
+
+    x_rotated = rotated_coordinates[0, :] + pivot[0]
+    y_rotated = rotated_coordinates[1, :] + pivot[1]
 
     return x_rotated, y_rotated
 
@@ -114,7 +135,7 @@ for i in dx:
 
 file_path = 'line.csv'
 x, y = read_coordinates_and_plot(file_path)
-x_r, y_r = rotate_graphic(0.1, x, y)
+x_r, y_r = rotate_graphic_new(0.1, x, y)
 
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
