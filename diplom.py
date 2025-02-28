@@ -2,7 +2,10 @@
 import sys
 import numpy as np
 import argparse
+import pandas as pd
 import matplotlib.pyplot as plt
+
+
 
 res = 4000
 xmin, xmax = -0.2, 0.2
@@ -16,6 +19,37 @@ BETA = MU * LAMBDA / (4 * PI)
 DELTA = 5.43e-4 / (EN**2)
 FOCAL = 8000
 THETA = 130
+
+def read_coordinates_and_plot(file_path):
+
+    coordinates = pd.read_csv(file_path, header=None)
+
+    x = coordinates[0].values
+    y = coordinates[1].values
+
+    return x, y
+
+
+def rotate_graphic(angle_rad, x, y):
+
+    pivot = np.array([x[0], y[0]])
+
+    angle = -np.radians(angle_rad)
+
+    rotation_matrix = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+
+    translated_coordinates = np.vstack((x, y)) - pivot[:, np.newaxis]
+
+    rotated_coordinates = rotation_matrix @ translated_coordinates
+
+    rotated_coordinates += pivot[:, np.newaxis]
+
+    x_rotated = rotated_coordinates[0, :]
+    y_rotated = rotated_coordinates[1, :]
+
+    return x_rotated, y_rotated
+
+
 
 source_lens_distance = 2 * FOCAL
 lens_screen_distance = 2 * FOCAL
@@ -40,20 +74,6 @@ for i in dx:
         / np.sqrt((xs - i)**2 + source_lens_distance**2)
         * np.exp(-1j * K * (DELTA - 1j * BETA) * lens_thickness)
     )
-
-    diff_result = formula_one[:-1] - formula_one[1:]
-    point_inflection = max(formula_one)
-    index = 0
-    for i in range(len(diff_result) - 1):
-        if diff_result[i] > 0 and diff_result[i + 1] < 0:
-            if abs(formula_one[i]) < point_inflection:
-                point_inflection = abs(formula_one[i])
-                index = i
-
-    #print(diff_result)
-    print(point_inflection, index)
-    list_points.append(point_inflection)
-
 
     #fig, ax1 = plt.subplots()
     #ax2 = ax1.twinx()
@@ -80,14 +100,28 @@ for i in dx:
     out_source = np.fft.fft(formula_one * formula_two)
     out_source = formula_three * np.fft.fftshift(out_source)
 
+    out_source_abs = np.abs(out_source)
+    list_points.append(np.argmax(out_source_abs))
 
     #fig, ax1 = plt.subplots()
     #ax2 = ax1.twinx()
     #ax1.plot(x_screen, np.abs(out_source))
     #ax2.plot(x_screen, np.angle(out_source))
 
-fig, ax3 = plt.subplots()
-ax3.plot(dx, list_points)
+#fig, ax3 = plt.subplots()
+#ax3.plot(dx, list_points)
+#plt.show()
+
+file_path = 'line.csv'
+x, y = read_coordinates_and_plot(file_path)
+x_r, y_r = rotate_graphic(0.1, x, y)
+
+fig, ax1 = plt.subplots()
+ax2 = ax1.twinx()
+ax1.plot(x, y, color='blue')
+ax2.plot(x_r, y_r, color='red')
+plt.grid(True)
+plt.xlim(0, 10)
 plt.show()
 
 
