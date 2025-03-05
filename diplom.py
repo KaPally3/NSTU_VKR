@@ -1,10 +1,8 @@
-## Моделирование мультипризматических рентгеновских линз: влияние дефектов материала на оптические свойства линз
-import sys
+# Моделирование мультипризматических рентгеновских линз:
+# влияние дефектов материала на оптические свойства линз
 import numpy as np
-import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
-
 
 
 res = 4000
@@ -20,12 +18,20 @@ DELTA = 5.43e-4 / (EN**2)
 FOCAL = 8000
 THETA = 130
 
-def read_coordinates_and_plot(file_path):
+
+def read_coordinates(file_path):
 
     coordinates = pd.read_csv(file_path, header=None)
 
-    x = coordinates[0].values
-    y = coordinates[1].values
+    # x = coordinates[0].values
+    # y = coordinates[1].values * 1e-3
+
+    # С этим работает
+    x = [1, 2, 3, 4, 5, 6]
+    y = [7, 8, 9, 10, 11, 12]
+
+    # x = np.linspace(0, 10, 1000)
+    # y = np.sin(x)
 
     return x, y
 
@@ -36,7 +42,38 @@ def rotate_graphic(angle_deg, x, y):
 
     angle = -np.radians(angle_deg)
 
-    rotation_matrix = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+    rotation_matrix = np.array(
+        [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
+    )
+
+    # Сдвиг координат так, чтобы опорная точка была в начале координат (0, 0)
+    x_shifted = x - pivot[0]
+    y_shifted = y - pivot[1]
+
+    # Применение матрицы поворота к сдвинутым координатам
+    x_rotated_shifted = (
+        x_shifted * rotation_matrix[0, 0] + y_shifted * rotation_matrix[0, 1]
+    )
+    y_rotated_shifted = (
+        x_shifted * rotation_matrix[1, 0] + y_shifted * rotation_matrix[1, 1]
+    )
+
+    # Возврат к исходной системе координат
+    x_rotated = x_rotated_shifted + pivot[0]
+    y_rotated = y_rotated_shifted + pivot[1]
+
+    return x_rotated, y_rotated
+
+
+def rotate_graphic_old(angle_deg, x, y):
+
+    pivot = np.array([x[0], y[0]])
+
+    angle = -np.radians(angle_deg)
+
+    rotation_matrix = np.array(
+        [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
+    )
 
     translated_coordinates = np.vstack((x, y)) - pivot[:, np.newaxis]
 
@@ -48,28 +85,6 @@ def rotate_graphic(angle_deg, x, y):
     y_rotated = rotated_coordinates[1, :]
 
     return x_rotated, y_rotated
-
-
-def rotate_graphic_new(angle_deg, x, y):
-
-    pivot = np.array([x[0], y[0]])
-
-    angle = -np.radians(angle_deg)
-
-    rotation_matrix = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
-
-    x_shifted = x - pivot[0]
-    y_shifted = y - pivot[1]
-
-    coordinates = np.stack((x_shifted, y_shifted), axis=0)
-
-    rotated_coordinates = np.dot(rotation_matrix, coordinates)
-
-    x_rotated = rotated_coordinates[0, :] + pivot[0]
-    y_rotated = rotated_coordinates[1, :] + pivot[1]
-
-    return x_rotated, y_rotated
-
 
 
 source_lens_distance = 2 * FOCAL
@@ -91,18 +106,18 @@ list_points = []
 for i in dx:
     formula_one = (
         EN
-        * np.exp(1j * K * np.sqrt((xs - i)**2 + source_lens_distance**2))
-        / np.sqrt((xs - i)**2 + source_lens_distance**2)
+        * np.exp(1j * K * np.sqrt((xs - i) ** 2 + source_lens_distance**2))
+        / np.sqrt((xs - i) ** 2 + source_lens_distance**2)
         * np.exp(-1j * K * (DELTA - 1j * BETA) * lens_thickness)
     )
 
-    #fig, ax1 = plt.subplots()
-    #ax2 = ax1.twinx()
-    #ax1.plot(xs, np.abs(formula_one))
-    #ax2.plot(xs, np.angle(formula_one))
-    #plt.show()
-    #exit(1)
-    #print(np.abs(np.diff(formula_one)))
+    # fig, ax1 = plt.subplots()
+    # ax2 = ax1.twinx()
+    # ax1.plot(xs, np.abs(formula_one))
+    # ax2.plot(xs, np.angle(formula_one))
+    # plt.show()
+    # exit(1)
+    # print(np.abs(np.diff(formula_one)))
 
     formula_two = np.exp(PI * 1j / (LAMBDA * lens_screen_distance) * (xs**2))
 
@@ -124,27 +139,23 @@ for i in dx:
     out_source_abs = np.abs(out_source)
     list_points.append(np.argmax(out_source_abs))
 
-    #fig, ax1 = plt.subplots()
-    #ax2 = ax1.twinx()
-    #ax1.plot(x_screen, np.abs(out_source))
-    #ax2.plot(x_screen, np.angle(out_source))
+    # fig, ax1 = plt.subplots()
+    # ax2 = ax1.twinx()
+    # ax1.plot(x_screen, np.abs(out_source))
+    # ax2.plot(x_screen, np.angle(out_source))
 
-#fig, ax3 = plt.subplots()
-#ax3.plot(dx, list_points)
-#plt.show()
+# fig, ax3 = plt.subplots()
+# ax3.plot(dx, list_points)
+# plt.show()
 
-file_path = 'line.csv'
-x, y = read_coordinates_and_plot(file_path)
-x_r, y_r = rotate_graphic_new(0.1, x, y)
+file_path = "line.csv"
+x, y = read_coordinates(file_path)
+x_r, y_r = rotate_graphic(5, x, y)
 
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
-ax1.plot(x, y, color='blue')
-ax2.plot(x_r, y_r, color='red')
+ax1.plot(x, y, color="blue")
+ax2.plot(x_r, y_r, color="red")
 plt.grid(True)
 plt.xlim(0, 10)
 plt.show()
-
-
-
-
