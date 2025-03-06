@@ -3,7 +3,8 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
+from matplotlib.lines import Line2D
+import tkinter
 
 res = 4000
 xmin, xmax = -0.2, 0.2
@@ -19,16 +20,25 @@ FOCAL = 8000
 THETA = 130
 
 
+def get_screen_size():
+
+    root = tkinter.Tk()
+    root.withdraw()
+    width = root.winfo_screenwidth()
+    height = root.winfo_screenheight()
+
+    return width, height
+
+
 def read_coordinates(file_path):
 
     coordinates = pd.read_csv(file_path, header=None)
 
-    # x = coordinates[0].values
-    # y = coordinates[1].values * 1e-3
+    x = coordinates[0].values
+    y = coordinates[1].values * 1e-3
 
-    # С этим работает
-    x = [1, 2, 3, 4, 5, 6]
-    y = [7, 8, 9, 10, 11, 12]
+    # x = [1, 2, 3, 4, 5, 6]
+    # y = [3, 3, 3, 3, 3, 3]
 
     # x = np.linspace(0, 10, 1000)
     # y = np.sin(x)
@@ -38,38 +48,9 @@ def read_coordinates(file_path):
 
 def rotate_graphic(angle_deg, x, y):
 
-    pivot = np.array([x[0], y[0]])
-
     angle = -np.radians(angle_deg)
 
-    rotation_matrix = np.array(
-        [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
-    )
-
-    # Сдвиг координат так, чтобы опорная точка была в начале координат (0, 0)
-    x_shifted = x - pivot[0]
-    y_shifted = y - pivot[1]
-
-    # Применение матрицы поворота к сдвинутым координатам
-    x_rotated_shifted = (
-        x_shifted * rotation_matrix[0, 0] + y_shifted * rotation_matrix[0, 1]
-    )
-    y_rotated_shifted = (
-        x_shifted * rotation_matrix[1, 0] + y_shifted * rotation_matrix[1, 1]
-    )
-
-    # Возврат к исходной системе координат
-    x_rotated = x_rotated_shifted + pivot[0]
-    y_rotated = y_rotated_shifted + pivot[1]
-
-    return x_rotated, y_rotated
-
-
-def rotate_graphic_old(angle_deg, x, y):
-
     pivot = np.array([x[0], y[0]])
-
-    angle = -np.radians(angle_deg)
 
     rotation_matrix = np.array(
         [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
@@ -150,12 +131,28 @@ for i in dx:
 
 file_path = "line.csv"
 x, y = read_coordinates(file_path)
-x_r, y_r = rotate_graphic(5, x, y)
+x_rotated, y_rotated = rotate_graphic(1, x, y)
 
-fig, ax1 = plt.subplots()
+width, heigth = get_screen_size()
+dpi = 110
+fig, ax1 = plt.subplots(figsize=(int(width / dpi), int(heigth / dpi)))
 ax2 = ax1.twinx()
-ax1.plot(x, y, color="blue")
-ax2.plot(x_r, y_r, color="red")
+(line1,) = ax1.plot(x, y, color="blue", linestyle="-", label="teeth")
+ax2.plot(x_rotated, y_rotated, color="red")
+
+x_lim = 10
+period = 1
+half_period = period / 2
+
+line2 = Line2D(
+    [0], [0], color="green", linestyle="--", linewidth=2, label="half-period"
+)
+
+for i in range(int(x_lim * period / half_period) + 1):
+    x_pos = i * half_period
+    ax1.axvline(x=x_pos, color="green", linestyle="--", linewidth=2)
+
 plt.grid(True)
-plt.xlim(0, 10)
+plt.xlim(0, x_lim)
+ax1.legend(handles=[line1, line2])
 plt.show()
