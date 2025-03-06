@@ -149,7 +149,7 @@ line2 = Line2D(
 )
 
 for i in range(int(x_lim * period / half_period) + 1):
-    x_pos = i * half_period
+    x_pos = (i + 0.1) * half_period
     ax1.axvline(x=x_pos, color="green", linestyle="--", linewidth=2)
 
 plt.grid(True)
