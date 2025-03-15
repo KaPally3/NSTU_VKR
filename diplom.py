@@ -1,5 +1,6 @@
 # Моделирование мультипризматических рентгеновских линз:
 # влияние дефектов материала на оптические свойства линз
+import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -37,12 +38,6 @@ def read_coordinates(file_path):
     x = coordinates[0].values
     y = coordinates[1].values * 1e-3
 
-    # x = [1, 2, 3, 4, 5, 6]
-    # y = [3, 3, 3, 3, 3, 3]
-
-    # x = np.linspace(0, 10, 1000)
-    # y = np.sin(x)
-
     return x, y
 
 
@@ -66,6 +61,52 @@ def rotate_graphic(angle_deg, x, y):
     y_rotated = rotated_coordinates[1, :]
 
     return x_rotated, y_rotated
+
+# Рассчет пройденного пути в материале
+def covered_in_the_material(x_start, y_start, length, x_teeth, y_teeth, num_points):
+
+    x_coords = np.linspace(x_start, length, num_points)
+    y_coords = 0 * x_coords + y_start
+
+    y_teeth_interp = np.interp(x_coords, x_teeth, y_teeth)
+
+    # plt.plot(x_coords, y_teeth_interp)
+    # plt.xlim(0, 10)
+    # plt.show()
+    #
+    # sys.exit(1)
+
+    path = 0.0
+    is_inside = False
+    start_inside = -1
+    end_inside = -1
+
+    for i in range(len(x_coords)):
+        if y_coords[i] >= y_teeth_interp[i]:
+
+            if not is_inside:
+                is_inside = True
+                start_inside = i
+
+        else:
+
+            if is_inside:
+                is_inside = False
+                end_inside = i
+
+                path += np.sqrt(
+                    (x_coords[end_inside] - x_coords[start_inside]) ** 2
+                    + (y_coords[end_inside] - y_coords[start_inside]) ** 2
+                )
+
+    if is_inside:
+        end_inside = len(x_coords) - 1
+        path += np.sqrt(
+            (x_coords[end_inside] - x_coords[start_inside]) ** 2
+            + (y_coords[end_inside] - y_coords[start_inside]) ** 2
+        )
+
+    return path
 
 
 source_lens_distance = 2 * FOCAL
@@ -136,23 +177,31 @@ x_rotated, y_rotated = rotate_graphic(1, x, y)
 width, heigth = get_screen_size()
 dpi = 110
 fig, ax1 = plt.subplots(figsize=(int(width / dpi), int(heigth / dpi)))
-ax2 = ax1.twinx()
 (line1,) = ax1.plot(x, y, color="blue", linestyle="-", label="teeth")
-ax2.plot(x_rotated, y_rotated, color="red")
-
-x_lim = 10
-period = 1
-half_period = period / 2
+ax1.plot(x_rotated, y_rotated, color="red")
+ax1.axis("equal")
 
 line2 = Line2D(
     [0], [0], color="green", linestyle="--", linewidth=2, label="half-period"
 )
+
+x_lim = np.max(x)
+period = 1
+half_period = period / 2
 
 for i in range(int(x_lim * period / half_period) + 1):
     x_pos = (i + 0.1) * half_period
     ax1.axvline(x=x_pos, color="green", linestyle="--", linewidth=2)
 
 plt.grid(True)
-plt.xlim(0, x_lim)
+plt.xlim(0, x_lim / 10)
 ax1.legend(handles=[line1, line2])
 plt.show()
+
+# Генерация горизонтальных лучей
+y_rays = np.linspace(-0.5, 0.5, 20)
+list_paths = []
+for j in range(len(y_rays)):
+    list_paths.append(covered_in_the_material(0, y_rays[j], 100, x, y, 1000))
+
+print(*list(map(float, list_paths)), sep="\n")
