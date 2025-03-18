@@ -62,6 +62,7 @@ def rotate_graphic(angle_deg, x, y):
 
     return x_rotated, y_rotated
 
+
 # Рассчет пройденного пути в материале
 def covered_in_the_material(x_start, y_start, length, x_teeth, y_teeth, num_points):
 
@@ -196,12 +197,27 @@ for i in range(int(x_lim * period / half_period) + 1):
 plt.grid(True)
 plt.xlim(0, x_lim / 10)
 ax1.legend(handles=[line1, line2])
-plt.show()
+# plt.show()
 
 # Генерация горизонтальных лучей
-y_rays = np.linspace(-0.5, 0.5, 20)
+y_rays = np.linspace(-2.5, 1.5, 500)
 list_paths = []
 for j in range(len(y_rays)):
-    list_paths.append(covered_in_the_material(0, y_rays[j], 100, x, y, 1000))
+    # list_paths.append(covered_in_the_material(0, y_rays[j], 100, x, y, 1000))
+    list_paths.append(
+        covered_in_the_material(0, y_rays[j], 100, x_rotated, y_rotated, 1000)
+    )
+
 
 print(*list(map(float, list_paths)), sep="\n")
+fdist = 0.7 * 1.75 / 100
+offset = 0.3
+plt.figure()
+plt.plot(y_rays, np.max(list_paths) - list_paths)
+plt.plot(y_rays, (y_rays - offset) ** 2 / (2 * fdist))
+plt.axvspan(
+    offset,
+    offset - 0.7,
+    alpha=0.2,
+)
+plt.show()
