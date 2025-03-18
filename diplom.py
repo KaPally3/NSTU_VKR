@@ -210,6 +210,7 @@ for j in range(len(y_rays)):
 
 
 print(*list(map(float, list_paths)), sep="\n")
+# считаем фокус модельной "идеальной" параболы y_t * y_g / L
 fdist = 0.7 * 1.75 / 100
 offset = 0.3
 plt.figure()
