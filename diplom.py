@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import tkinter
 
-res = 4000
-xmin, xmax = -0.2, 0.2
+res = 1000
+xmin, xmax = -0.3, 0.3
 
 PI = np.pi
 EN = 30
@@ -71,10 +71,9 @@ def covered_in_the_material(x_start, y_start, length, x_teeth, y_teeth, num_poin
 
     y_teeth_interp = np.interp(x_coords, x_teeth, y_teeth)
 
-    # plt.plot(x_coords, y_teeth_interp)
-    # plt.xlim(0, 10)
+    plt.plot(x_coords, y_teeth_interp)
+    plt.xlim(0, 10)
     # plt.show()
-    #
     # sys.exit(1)
 
     path = 0.0
@@ -110,115 +109,118 @@ def covered_in_the_material(x_start, y_start, length, x_teeth, y_teeth, num_poin
     return path
 
 
-source_lens_distance = 2 * FOCAL
-lens_screen_distance = 2 * FOCAL
+if __name__ == '__main__':
+    source_lens_distance = 2 * FOCAL
+    lens_screen_distance = 2 * FOCAL
 
-xs = np.linspace(xmin, xmax, res)
-dx = (xmax - xmin) / (res - 1)
+    xs = np.linspace(xmin, xmax, res)
+    dx = (xmax - xmin) / (res - 1)
 
-fx = np.fft.fftfreq(res, d=dx)
-fx = np.fft.fftshift(fx)
+    fx = np.fft.fftfreq(res, d=dx)
+    fx = np.fft.fftshift(fx)
 
-x_screen = fx * LAMBDA * lens_screen_distance
+    x_screen = fx * LAMBDA * lens_screen_distance
 
-lens_thickness = xs**2 / (2 * FOCAL * DELTA)
+    lens_thickness = xs**2 / (2 * FOCAL * DELTA)
 
-Xsc = xmax / 2
-dx = np.linspace(-Xsc, Xsc, 1000)
-list_points = []
-for i in dx:
-    formula_one = (
-        EN
-        * np.exp(1j * K * np.sqrt((xs - i) ** 2 + source_lens_distance**2))
-        / np.sqrt((xs - i) ** 2 + source_lens_distance**2)
-        * np.exp(-1j * K * (DELTA - 1j * BETA) * lens_thickness)
-    )
-
-    # fig, ax1 = plt.subplots()
-    # ax2 = ax1.twinx()
-    # ax1.plot(xs, np.abs(formula_one))
-    # ax2.plot(xs, np.angle(formula_one))
-    # plt.show()
-    # exit(1)
-    # print(np.abs(np.diff(formula_one)))
-
-    formula_two = np.exp(PI * 1j / (LAMBDA * lens_screen_distance) * (xs**2))
-
-    formula_three = (
-        -1j
-        / LAMBDA
-        * np.exp(
-            2
-            * PI
-            * 1j
-            / LAMBDA
-            * (lens_screen_distance + (x_screen**2) / 2 / lens_screen_distance)
+    Xsc = xmax / 2
+    dx = np.linspace(-Xsc, Xsc, 1000)
+    list_points = []
+    for i in dx:
+        formula_one = (
+            EN
+            * np.exp(1j * K * np.sqrt((xs - i) ** 2 + source_lens_distance**2))
+            / np.sqrt((xs - i) ** 2 + source_lens_distance**2)
+            * np.exp(-1j * K * (DELTA - 1j * BETA) * lens_thickness)
         )
+
+        # fig, ax1 = plt.subplots()
+        # ax2 = ax1.twinx()
+        # ax1.plot(xs, np.abs(formula_one))
+        # ax2.plot(xs, np.angle(formula_one))
+        # plt.show()
+        # exit(1)
+        # print(np.abs(np.diff(formula_one)))
+
+        formula_two = np.exp(PI * 1j / (LAMBDA * lens_screen_distance) * (xs**2))
+
+        formula_three = (
+            -1j
+            / LAMBDA
+            * np.exp(
+                2
+                * PI
+                * 1j
+                / LAMBDA
+                * (lens_screen_distance + (x_screen**2) / 2 / lens_screen_distance)
+            )
+        )
+
+        out_source = np.fft.fft(formula_one * formula_two)
+        out_source = formula_three * np.fft.fftshift(out_source)
+
+        out_source_abs = np.abs(out_source)
+        list_points.append(np.argmax(out_source_abs))
+
+        # fig, ax1 = plt.subplots()
+        # ax2 = ax1.twinx()
+        # ax1.plot(x_screen, np.abs(out_source))
+        # ax2.plot(x_screen, np.angle(out_source))
+
+    # fig, ax3 = plt.subplots()
+    # ax3.plot(dx, list_points)
+    # plt.show()
+
+    file_path = "line.csv"
+    x, y = read_coordinates(file_path)
+    x_rotated, y_rotated = rotate_graphic(1, x, y)
+
+    width, heigth = get_screen_size()
+    dpi = 110
+    fig, ax1 = plt.subplots(figsize=(int(width / dpi), int(heigth / dpi)))
+    (line1,) = ax1.plot(x, y, color="blue", linestyle="-", label="teeth")
+    ax1.plot(x_rotated, y_rotated, color="red")
+    ax1.axis("equal")
+
+    line2 = Line2D(
+        [0], [0], color="green", linestyle="--", linewidth=2, label="half-period"
     )
 
-    out_source = np.fft.fft(formula_one * formula_two)
-    out_source = formula_three * np.fft.fftshift(out_source)
+    x_lim = np.max(x)
+    period = 1
+    half_period = period / 2
 
-    out_source_abs = np.abs(out_source)
-    list_points.append(np.argmax(out_source_abs))
+    for i in range(int(x_lim * period / half_period) + 1):
+        x_pos = (i + 0.1) * half_period
+        ax1.axvline(x=x_pos, color="green", linestyle="--", linewidth=2)
 
-    # fig, ax1 = plt.subplots()
-    # ax2 = ax1.twinx()
-    # ax1.plot(x_screen, np.abs(out_source))
-    # ax2.plot(x_screen, np.angle(out_source))
+    plt.grid(True)
+    plt.xlim(0, x_lim / 10)
+    ax1.legend(handles=[line1, line2])
+    # plt.show()
 
-# fig, ax3 = plt.subplots()
-# ax3.plot(dx, list_points)
-# plt.show()
+    # Генерация горизонтальных лучей
+    y_rays = np.linspace(-2.5, 1.5, 500)
+    list_paths = []
+    for j in range(len(xs)):
+        # list_paths.append(covered_in_the_material(0, y_rays[j], 100, x, y, 1000))
+        list_paths.append(
+            covered_in_the_material(0, xs[j], 100, x_rotated, y_rotated, 1000)
+        )
 
-file_path = "line.csv"
-x, y = read_coordinates(file_path)
-x_rotated, y_rotated = rotate_graphic(1, x, y)
-
-width, heigth = get_screen_size()
-dpi = 110
-fig, ax1 = plt.subplots(figsize=(int(width / dpi), int(heigth / dpi)))
-(line1,) = ax1.plot(x, y, color="blue", linestyle="-", label="teeth")
-ax1.plot(x_rotated, y_rotated, color="red")
-ax1.axis("equal")
-
-line2 = Line2D(
-    [0], [0], color="green", linestyle="--", linewidth=2, label="half-period"
-)
-
-x_lim = np.max(x)
-period = 1
-half_period = period / 2
-
-for i in range(int(x_lim * period / half_period) + 1):
-    x_pos = (i + 0.1) * half_period
-    ax1.axvline(x=x_pos, color="green", linestyle="--", linewidth=2)
-
-plt.grid(True)
-plt.xlim(0, x_lim / 10)
-ax1.legend(handles=[line1, line2])
-# plt.show()
-
-# Генерация горизонтальных лучей
-y_rays = np.linspace(-2.5, 1.5, 500)
-list_paths = []
-for j in range(len(y_rays)):
-    # list_paths.append(covered_in_the_material(0, y_rays[j], 100, x, y, 1000))
-    list_paths.append(
-        covered_in_the_material(0, y_rays[j], 100, x_rotated, y_rotated, 1000)
+    print(*list(map(float, list_paths)), sep="\n")
+    # считаем фокус фокус  модельной "идеальной" параболы y_t * y_g / L
+    fdist = 0.7 * 1.75 / 100
+    offset = 0.3
+    plt.figure()
+    y_rays_combined = np.concatenate((-xs + 0.6, xs))
+    list_paths_combined = np.concatenate((np.max(list_paths) - list_paths, np.max(list_paths) - list_paths))
+    plt.plot(y_rays_combined, list_paths_combined)
+    plt.plot(xs, (xs - offset) ** 2 / (2 * fdist))
+    plt.axvspan(
+        offset,
+        offset - 0.7,
+        alpha=0.2,
     )
+    plt.show()
 
-
-print(*list(map(float, list_paths)), sep="\n")
-# считаем фокус модельной "идеальной" параболы y_t * y_g / L
-fdist = 0.7 * 1.75 / 100
-offset = 0.3
-plt.figure()
-plt.plot(y_rays, np.max(list_paths) - list_paths)
-plt.plot(y_rays, (y_rays - offset) ** 2 / (2 * fdist))
-plt.axvspan(
-    offset,
-    offset - 0.7,
-    alpha=0.2,
-)
-plt.show()
