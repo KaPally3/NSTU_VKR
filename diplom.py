@@ -22,6 +22,7 @@ BETA = MU * LAMBDA / (4 * PI)
 DELTA = 5.43e-4 / (EN**2)
 FOCAL = 8000
 THETA = 130
+LENGTH = 100
 
 
 def get_screen_size():
@@ -267,7 +268,7 @@ if __name__ == '__main__':
 
     print(*list(map(float, list_paths)), sep="\n")
     # считаем фокус модельной "идеальной" параболы y_t * y_g / L
-    fdist = 0.7 * 1.75 / 100
+    fdist = 0.7 * 1.75 / LENGTH
     offset = 0.3
 
     plt.figure()
@@ -292,7 +293,7 @@ if __name__ == '__main__':
     # Внутренний
     start_index_inner = find_first_close_enough(x, 2 * half_period - half_period / 2)
     end_index_inner = find_first_close_enough(x, 2 * half_period + half_period / 2)
-    print(x[start_index_inner], x[end_index_inner])
+    # print(x[start_index_inner], x[end_index_inner])
     radius_inner, x_center_inner, y_center_inner = estimate_radii(x, y, start_index_inner, end_index_inner)
     if radius_inner is not None:
         print(f"Inner Circle\nRadius: {radius_inner} Center of circle: x = {x_center_inner} y = {y_center_inner}")
@@ -300,8 +301,47 @@ if __name__ == '__main__':
     # Внешний
     start_index_outer = find_first_close_enough(x, 3 * half_period - half_period / 2)
     end_index_outer = find_first_close_enough(x, 3 * half_period + half_period / 2)
-    print(x[start_index_outer], x[end_index_outer])
+    # print(x[start_index_outer], x[end_index_outer])
     radius_outer, x_center_outer, y_center_outer = estimate_radii(x, y, start_index_outer, end_index_outer)
     if radius_outer is not None:
         print(f"Outer Circle\nRadius: {radius_outer} Center of circle: x = {x_center_outer} y = {y_center_outer}")
+
+
+    # Фокус мультипризматической линзы
+
+    # f = R / (2 * LAMBDA * N)
+    # R = 2 * x - где x - ширина зуба
+    # фокус модельной "идеальной" параболы y_t * y_g / (LAMBDA * L)
+    # y_t - высота зуба (Точка слева)
+    # y_g - ширина раскрытия справа деленая на 2
+    # L - длина крокодила
+
+    # Высоту зуба можно посчитать взяв массив y и найти минимальное значение в диапазоне от четверти периода до трех четвертых периода
+    # Найти максимальное значение из соседнего промежутка и так пройти по всем N зубьям, потом взять среднее каждого и отнять
+    # (этот алгоритм проще писать для синего графика)
+    list_min = []
+    list_max = []
+    for i in range(1, int(x_lim * period) + 1):
+        array_for_min = y[find_first_close_enough(x, i * half_period - half_period / 2): find_first_close_enough(x, i * half_period + half_period / 2)]
+        array_for_max = y[find_first_close_enough(x, i * 2 * half_period - half_period / 2): find_first_close_enough(x, i * 2 * half_period + half_period / 2)]
+        list_min.append(np.min(array_for_min))
+        list_max.append(np.max(array_for_max))
+
+    average_min = np.mean(list_min)
+    average_max = np.mean(list_max)
+    y_t = np.abs(average_min) + np.abs(average_max)
+    print(f"y_t: {y_t}")
+
+    # Взять пик последнего зуба и вычесть пик первого "начального" зуба (тут уже красный график)
+    first_peak = y_rotated[find_first_close_enough(x_rotated, 0): find_first_close_enough(x_rotated, half_period)]
+    last_peak = y_rotated[find_first_close_enough(x_rotated, 97 * 2 * half_period - half_period / 2): find_first_close_enough(x_rotated, 97 * 2 * half_period + half_period / 2)]
+    y_g = np.abs(np.max(first_peak)) + np.abs(np.max(last_peak))
+    print(f"y_g: {y_g}")
+
+    print(f"LAMBDA: {LAMBDA}\nLENGTH: {LENGTH}")
+
+    # f нужно подогнать к 8м
+    # Подгонять можно по y_t, y_g, LAMBDA, LENGTH
+    focal_length = y_t * y_g / (LAMBDA * LENGTH)
+    print(f"Focal length: {focal_length}")
 
