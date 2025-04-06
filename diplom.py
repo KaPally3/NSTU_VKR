@@ -6,6 +6,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import tkinter
+from scipy.optimize import curve_fit
+import warnings
+
+
+
 
 res = 1000
 xmin, xmax = -0.3, 0.3
@@ -109,7 +114,63 @@ def covered_in_the_material(x_start, y_start, length, x_teeth, y_teeth, num_poin
     return path
 
 
+# функция окружности
+def circle_arc(x, radius, x_center, y_center):
+
+    arg = radius ** 2 - (x - x_center) ** 2
+    # Вместо 0 должно быть nan
+    #y = np.where(arg >= 0, y_center + np.sqrt(arg), 0)
+    # nan_mask = np.isnan(y)
+
+    #return  y  # y[~nan_mask]
+
+    if not np.all(arg >= 0):
+        for i in range(len(arg)):
+            if arg[i] < 0:
+                arg[i] = 0
+
+    return y_center + np.sqrt(arg)
+
+
+
+# оценка внутреннего и внешнего радиусов
+def estimate_radii(x_data, y_data, start_index, end_index):
+
+    x_segment = x_data[start_index:end_index]
+    y_segment = y_data[start_index:end_index]
+
+    x_center_guess = np.mean(x_segment)
+    y_center_guess = np.max(y_segment)
+    radius_guess = np.ptp(x_segment)
+
+    try:
+        popt, pcov = curve_fit(circle_arc, x_segment, y_segment, p0=[radius_guess, x_center_guess, y_center_guess], bounds=([0, min(x_data), min(y_data)], [np.max(x_data) - np.min(x_data), max(x_data), max(y_data) * 2]), method='trf')
+        radius, x_center, y_center = popt
+
+        return radius, x_center, y_center
+    except RuntimeError:
+        print("Error: curve_fit не смог сойтись\nПопробуйте другие начальные значения")
+        return None, None, None
+
+
+def find_first_close_enough(data, value):
+
+    for d in data:
+        if d >= value:
+            return list(data).index(d)
+
+    print(f"{value} не на координатной прямой")
+    return None
+
+
+
 if __name__ == '__main__':
+
+    warnings.filterwarnings("ignore", category=UserWarning)
+
+    a = np.finfo(np.longdouble)
+    print(a.min)
+
     source_lens_distance = 2 * FOCAL
     lens_screen_distance = 2 * FOCAL
 
@@ -209,13 +270,20 @@ if __name__ == '__main__':
         )
 
     print(*list(map(float, list_paths)), sep="\n")
-    # считаем фокус фокус  модельной "идеальной" параболы y_t * y_g / L
+    # считаем фокус модельной "идеальной" параболы y_t * y_g / L
     fdist = 0.7 * 1.75 / 100
     offset = 0.3
+
     plt.figure()
-    y_rays_combined = np.concatenate((-xs + 0.6, xs))
+    # собираем всю числовую прямую
+    xs_combined = np.concatenate((-xs + 0.6, xs))
     list_paths_combined = np.concatenate((np.max(list_paths) - list_paths, np.max(list_paths) - list_paths))
-    plt.plot(y_rays_combined, list_paths_combined)
+    # сортируем по возрастанию
+    sorted_indices = np.argsort(xs_combined)
+    xs_combined_sorted = xs_combined[sorted_indices]
+    list_paths_combined_sorted = list_paths_combined[sorted_indices]
+    # отрисовываем графики нашей и "идеальной" параболы
+    plt.plot(xs_combined_sorted, list_paths_combined_sorted)
     plt.plot(xs, (xs - offset) ** 2 / (2 * fdist))
     plt.axvspan(
         offset,
@@ -223,4 +291,26 @@ if __name__ == '__main__':
         alpha=0.2,
     )
     plt.show()
+
+    # Оцениваем радиусы
+    # Внутренний
+    start_index_inner = find_first_close_enough(x, 2 * half_period - half_period / 2)
+    end_index_inner = find_first_close_enough(x, 2 * half_period + half_period / 2)
+    print(x[start_index_inner], x[end_index_inner])
+    radius_inner, x_center_inner, y_center_inner = estimate_radii(x, y, start_index_inner, end_index_inner)
+    if radius_inner is not None:
+        print(f"Inner Circle\nRadius: {radius_inner} Center of circle: x = {x_center_inner} y = {y_center_inner}")
+
+    # Внешний
+    start_index_outer = find_first_close_enough(x, 3 * half_period - half_period / 2)
+    end_index_outer = find_first_close_enough(x, 3 * half_period + half_period / 2)
+    print(x[start_index_outer], x[end_index_outer])
+    radius_outer, x_center_outer, y_center_outer = estimate_radii(x, y, start_index_outer, end_index_outer)
+    if radius_outer is not None:
+        print(f"Outer Circle\nRadius: {radius_outer} Center of circle: x = {x_center_outer} y = {y_center_outer}")
+
+
+
+
+
 
