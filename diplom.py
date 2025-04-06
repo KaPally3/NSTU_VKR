@@ -10,8 +10,6 @@ from scipy.optimize import curve_fit
 import warnings
 
 
-
-
 res = 1000
 xmin, xmax = -0.3, 0.3
 
@@ -50,10 +48,10 @@ def rotate_graphic(angle_deg, x, y):
 
     angle = -np.radians(angle_deg)
 
-    pivot = np.array([x[0], y[0]])
+    pivot = np.array([x[0], y[0]], dtype=np.float64)
 
     rotation_matrix = np.array(
-        [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
+        [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]], dtype=np.float64
     )
 
     translated_coordinates = np.vstack((x, y)) - pivot[:, np.newaxis]
@@ -132,7 +130,6 @@ def circle_arc(x, radius, x_center, y_center):
     return y_center + np.sqrt(arg)
 
 
-
 # оценка внутреннего и внешнего радиусов
 def estimate_radii(x_data, y_data, start_index, end_index):
 
@@ -161,7 +158,6 @@ def find_first_close_enough(data, value):
 
     print(f"{value} не на координатной прямой")
     return None
-
 
 
 if __name__ == '__main__':
@@ -308,9 +304,4 @@ if __name__ == '__main__':
     radius_outer, x_center_outer, y_center_outer = estimate_radii(x, y, start_index_outer, end_index_outer)
     if radius_outer is not None:
         print(f"Outer Circle\nRadius: {radius_outer} Center of circle: x = {x_center_outer} y = {y_center_outer}")
-
-
-
-
-
 
