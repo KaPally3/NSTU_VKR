@@ -117,11 +117,6 @@ def covered_in_the_material(x_start, y_start, length, x_teeth, y_teeth, num_poin
 def circle_arc(x, radius, x_center, y_center):
 
     arg = radius ** 2 - (x - x_center) ** 2
-    # Вместо 0 должно быть nan
-    #y = np.where(arg >= 0, y_center + np.sqrt(arg), 0)
-    # nan_mask = np.isnan(y)
-
-    #return  y  # y[~nan_mask]
 
     if not np.all(arg >= 0):
         for i in range(len(arg)):
@@ -142,10 +137,10 @@ def estimate_radii(x_data, y_data, start_index, end_index):
     radius_guess = np.ptp(x_segment)
 
     try:
-        popt, pcov = curve_fit(circle_arc, x_segment, y_segment, p0=[radius_guess, x_center_guess, y_center_guess], bounds=([0, min(x_data), min(y_data)], [np.max(x_data) - np.min(x_data), max(x_data), max(y_data) * 2]), method='trf')
-        radius, x_center, y_center = popt
+        popt, pcov = curve_fit(teeth_curve, x_segment, y_segment, p0=[radius_guess, x_center_guess, y_center_guess], bounds=([0, min(x_data), min(y_data)], [np.max(x_data) - np.min(x_data), max(x_data), max(y_data) * 2]), method='trf')
+        x_center, y_center, radius = popt
 
-        return radius, x_center, y_center
+        return x_center, y_center, radius
     except RuntimeError:
         print("Error: curve_fit не смог сойтись\nПопробуйте другие начальные значения")
         return None, None, None
@@ -159,6 +154,22 @@ def find_first_close_enough(data, value):
 
     print(f"{value} не на координатной прямой")
     return None
+
+
+def teeth_curve(x, xr, yr, r, theta_start=np.pi / 6, theta_end=np.pi / 6):
+
+    y = np.zeros_like(x, dtype=float)
+
+    one = x < xr - r * np.cos(theta_start)
+    y[one] = yr + r * np.sin(theta_start) - (xr - r * np.cos(theta_start) - x[one]) / np.tan(theta_start)
+
+    two = (x >= xr - r * np.cos(theta_start)) & (x <= xr + r * np.cos(theta_end))
+    y[two] = np.sqrt(r ** 2 - (x[two] - xr) ** 2) + yr
+
+    three = x > xr + r * np.cos(theta_end)
+    y[three] = yr + r * np.sin(theta_end) - (x[three] - xr - r * np.cos(theta_end)) / np.tan(theta_end)
+
+    return y
 
 
 if __name__ == '__main__':
@@ -287,6 +298,11 @@ if __name__ == '__main__':
         offset - 0.7,
         alpha=0.2,
     )
+
+    x_test = np.linspace(0, 90, 90)
+    fig, ax1 = plt.subplots(figsize=(int(width / dpi), int(heigth / dpi)))
+    ax1.plot(x_test, teeth_curve(x_test, 45, 45, 20, np.pi / 4, np.pi / 4), color="red")
+
     plt.show()
 
     # Оцениваем радиусы
@@ -294,7 +310,7 @@ if __name__ == '__main__':
     start_index_inner = find_first_close_enough(x, 2 * half_period - half_period / 2)
     end_index_inner = find_first_close_enough(x, 2 * half_period + half_period / 2)
     # print(x[start_index_inner], x[end_index_inner])
-    radius_inner, x_center_inner, y_center_inner = estimate_radii(x, y, start_index_inner, end_index_inner)
+    x_center_inner, y_center_inner, radius_inner = estimate_radii(x, y, start_index_inner, end_index_inner)
     if radius_inner is not None:
         print(f"Inner Circle\nRadius: {radius_inner} Center of circle: x = {x_center_inner} y = {y_center_inner}")
 
@@ -302,7 +318,7 @@ if __name__ == '__main__':
     start_index_outer = find_first_close_enough(x, 3 * half_period - half_period / 2)
     end_index_outer = find_first_close_enough(x, 3 * half_period + half_period / 2)
     # print(x[start_index_outer], x[end_index_outer])
-    radius_outer, x_center_outer, y_center_outer = estimate_radii(x, y, start_index_outer, end_index_outer)
+    x_center_outer, y_center_outer, radius_outer = estimate_radii(x, y, start_index_outer, end_index_outer)
     if radius_outer is not None:
         print(f"Outer Circle\nRadius: {radius_outer} Center of circle: x = {x_center_outer} y = {y_center_outer}")
 
@@ -341,7 +357,7 @@ if __name__ == '__main__':
     print(f"LAMBDA: {LAMBDA}\nLENGTH: {LENGTH}")
 
     # f нужно подогнать к 8м
-    # Подгонять можно по y_t, y_g, LAMBDA, LENGTH
+    # Подгонять можно по y_t, y_g, LENGTH
     focal_length = y_t * y_g / (LAMBDA * LENGTH)
     print(f"Focal length: {focal_length}")
 
