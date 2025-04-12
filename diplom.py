@@ -113,19 +113,6 @@ def covered_in_the_material(x_start, y_start, length, x_teeth, y_teeth, num_poin
     return path
 
 
-# функция окружности
-def circle_arc(x, radius, x_center, y_center):
-
-    arg = radius ** 2 - (x - x_center) ** 2
-
-    if not np.all(arg >= 0):
-        for i in range(len(arg)):
-            if arg[i] < 0:
-                arg[i] = 0
-
-    return y_center + np.sqrt(arg)
-
-
 # оценка внутреннего и внешнего радиусов
 def estimate_radii(x_data, y_data, start_index, end_index):
 
@@ -136,14 +123,16 @@ def estimate_radii(x_data, y_data, start_index, end_index):
     y_center_guess = np.max(y_segment)
     radius_guess = np.ptp(x_segment)
 
-    try:
-        popt, pcov = curve_fit(teeth_curve, x_segment, y_segment, p0=[radius_guess, x_center_guess, y_center_guess], bounds=([0, min(x_data), min(y_data)], [np.max(x_data) - np.min(x_data), max(x_data), max(y_data) * 2]), method='trf')
-        x_center, y_center, radius = popt
+    initial_guess = [x_center_guess, y_center_guess, radius_guess, np.pi / 6, np.pi / 6]
 
-        return x_center, y_center, radius
+    try:
+        popt, pcov = curve_fit(teeth_curve, x_segment, y_segment, p0=initial_guess, bounds=([0, min(x_data), min(y_data), 0, 0], [np.max(x_data) - np.min(x_data), max(x_data), max(y_data) * 2, np.pi / 2, np.pi / 2]), method='trf')
+        x_center, y_center, radius, theta_start, theta_end = popt
+
+        return x_center, y_center, radius, theta_start, theta_end
     except RuntimeError:
         print("Error: curve_fit не смог сойтись\nПопробуйте другие начальные значения")
-        return None, None, None
+        return None, None, None, None, None
 
 
 def find_first_close_enough(data, value):
@@ -156,7 +145,7 @@ def find_first_close_enough(data, value):
     return None
 
 
-def teeth_curve(x, xr, yr, r, theta_start=np.pi / 6, theta_end=np.pi / 6):
+def teeth_curve(x, xr, yr, r, theta_start, theta_end):
 
     y = np.zeros_like(x, dtype=float)
 
@@ -170,6 +159,29 @@ def teeth_curve(x, xr, yr, r, theta_start=np.pi / 6, theta_end=np.pi / 6):
     y[three] = yr + r * np.sin(theta_end) - (x[three] - xr - r * np.cos(theta_end)) / np.tan(theta_end)
 
     return y
+
+
+def perfect_line(x, fdist):
+
+    offset = 0.3
+
+    return (x - offset) ** 2 / (2 * fdist)
+
+
+def fit_perfect_line(x, y):
+
+    initial_guess = [8.0]
+
+    try:
+        popt, pcov = curve_fit(perfect_line, x, y, p0=initial_guess)
+
+        fdist = popt
+
+        return fdist
+
+    except RuntimeError:
+        print("Error: curve_fit не смог сойтись\nПопробуйте другое начальное значение")
+        return None
 
 
 if __name__ == '__main__':
@@ -281,7 +293,6 @@ if __name__ == '__main__':
     # считаем фокус модельной "идеальной" параболы y_t * y_g / L
     fdist = 0.7 * 1.75 / LENGTH
     offset = 0.3
-
     plt.figure()
     # собираем всю числовую прямую
     xs_combined = np.concatenate((-xs + 0.6, xs))
@@ -292,35 +303,36 @@ if __name__ == '__main__':
     list_paths_combined_sorted = list_paths_combined[sorted_indices]
     # отрисовываем графики нашей и "идеальной" параболы
     plt.plot(xs_combined_sorted, list_paths_combined_sorted)
-    plt.plot(xs, (xs - offset) ** 2 / (2 * fdist))
+    plt.plot(xs, perfect_line(xs, fdist))
+    focal_length = fit_perfect_line(xs_combined_sorted, list_paths_combined_sorted)
+    # Строим наш график после curve_fit
+    plt.plot(xs_combined_sorted, perfect_line(xs_combined_sorted, focal_length))
     plt.axvspan(
         offset,
         offset - 0.7,
         alpha=0.2,
     )
-
-    x_test = np.linspace(0, 90, 90)
-    fig, ax1 = plt.subplots(figsize=(int(width / dpi), int(heigth / dpi)))
-    ax1.plot(x_test, teeth_curve(x_test, 45, 45, 20, np.pi / 4, np.pi / 4), color="red")
-
-    plt.show()
+    # # График идеального зуба
+    # x_test = np.linspace(0, 90, 90)
+    # fig, ax1 = plt.subplots(figsize=(int(width / dpi), int(heigth / dpi)))
+    # ax1.plot(x_test, teeth_curve(x_test, 45, 45, 20, np.pi / 4, np.pi / 4), color="red")
 
     # Оцениваем радиусы
     # Внутренний
     start_index_inner = find_first_close_enough(x, 2 * half_period - half_period / 2)
     end_index_inner = find_first_close_enough(x, 2 * half_period + half_period / 2)
     # print(x[start_index_inner], x[end_index_inner])
-    x_center_inner, y_center_inner, radius_inner = estimate_radii(x, y, start_index_inner, end_index_inner)
+    x_center_inner, y_center_inner, radius_inner, theta_start, theta_end = estimate_radii(x, y, start_index_inner, end_index_inner)
     if radius_inner is not None:
-        print(f"Inner Circle\nRadius: {radius_inner} Center of circle: x = {x_center_inner} y = {y_center_inner}")
+        print(f"Inner Circle\nRadius: {radius_inner} Center of circle: x = {x_center_inner} y = {y_center_inner}, fi1 = {theta_start}, fi2 = {theta_end}")
 
     # Внешний
     start_index_outer = find_first_close_enough(x, 3 * half_period - half_period / 2)
     end_index_outer = find_first_close_enough(x, 3 * half_period + half_period / 2)
     # print(x[start_index_outer], x[end_index_outer])
-    x_center_outer, y_center_outer, radius_outer = estimate_radii(x, y, start_index_outer, end_index_outer)
+    x_center_outer, y_center_outer, radius_outer, theta_start, theta_end  = estimate_radii(x, y, start_index_outer, end_index_outer)
     if radius_outer is not None:
-        print(f"Outer Circle\nRadius: {radius_outer} Center of circle: x = {x_center_outer} y = {y_center_outer}")
+        print(f"Outer Circle\nRadius: {radius_outer} Center of circle: x = {x_center_outer} y = {y_center_outer}, fi1 = {theta_start}, fi2 = {theta_end}")
 
 
     # Фокус мультипризматической линзы
@@ -357,7 +369,8 @@ if __name__ == '__main__':
     print(f"LAMBDA: {LAMBDA}\nLENGTH: {LENGTH}")
 
     # f нужно подогнать к 8м
-    # Подгонять можно по y_t, y_g, LENGTH
-    focal_length = y_t * y_g / (LAMBDA * LENGTH)
     print(f"Focal length: {focal_length}")
+
+    plt.show()
+
 
