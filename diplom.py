@@ -8,6 +8,7 @@ from matplotlib.lines import Line2D
 import tkinter
 from scipy.optimize import curve_fit
 import warnings
+from scipy.interpolate import interp1d
 
 
 res = 1000
@@ -75,8 +76,8 @@ def covered_in_the_material(x_start, y_start, length, x_teeth, y_teeth, num_poin
 
     y_teeth_interp = np.interp(x_coords, x_teeth, y_teeth)
 
-    plt.plot(x_coords, y_teeth_interp)
-    plt.xlim(0, 10)
+    # plt.plot(x_coords, y_teeth_interp)
+    # plt.xlim(0, 10)
     # plt.show()
     # sys.exit(1)
 
@@ -247,10 +248,13 @@ if __name__ == '__main__':
         # ax2 = ax1.twinx()
         # ax1.plot(x_screen, np.abs(out_source))
         # ax2.plot(x_screen, np.angle(out_source))
+        # plt.show()
+        # exit(1)
 
     # fig, ax3 = plt.subplots()
     # ax3.plot(dx, list_points)
     # plt.show()
+    # exit(1)
 
     file_path = "line.csv"
     x, y = read_coordinates(file_path)
@@ -286,8 +290,8 @@ if __name__ == '__main__':
     for j in range(len(xs)):
         # list_paths.append(covered_in_the_material(0, y_rays[j], 100, x, y, 1000))
         list_paths.append(
-            covered_in_the_material(0, xs[j], 100, x_rotated, y_rotated, 1000)
-        )
+                covered_in_the_material(0, xs[j], 100, x_rotated, y_rotated, 1000)
+                )
 
     print(*list(map(float, list_paths)), sep="\n")
     # считаем фокус модельной "идеальной" параболы y_t * y_g / L
@@ -313,9 +317,9 @@ if __name__ == '__main__':
         alpha=0.2,
     )
     # # График идеального зуба
-    # x_test = np.linspace(0, 90, 90)
-    # fig, ax1 = plt.subplots(figsize=(int(width / dpi), int(heigth / dpi)))
-    # ax1.plot(x_test, teeth_curve(x_test, 45, 45, 20, np.pi / 4, np.pi / 4), color="red")
+    x_test = np.linspace(0, 90, 90)
+    fig, ax1 = plt.subplots(figsize=(int(width / dpi), int(heigth / dpi)))
+    ax1.plot(x_test, teeth_curve(x_test, 45, 45, 20, np.pi / 4, np.pi / 4), color="red")
 
     # Оцениваем радиусы
     # Внутренний
@@ -369,7 +373,13 @@ if __name__ == '__main__':
     print(f"LAMBDA: {LAMBDA}\nLENGTH: {LENGTH}")
 
     # f нужно подогнать к 8м
-    print(f"Focal length: {focal_length}")
+    print(f"Focal length: {focal_length / DELTA}")
+
+    x_new = np.linspace(np.min(xs_combined_sorted), np.max(xs_combined_sorted), 100)
+    y_new = np.interp(x_new, xs_combined_sorted, list_paths_combined_sorted)
+    plt.figure(figsize=(8, 6))
+
+    plt.plot(x_new, y_new)
 
     plt.show()
 
