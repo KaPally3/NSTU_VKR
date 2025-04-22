@@ -189,11 +189,7 @@ if __name__ == '__main__':
 
     warnings.filterwarnings("ignore", category=UserWarning)
 
-    a = np.finfo(np.longdouble)
-    print(a.min)
-
     source_lens_distance = 2 * FOCAL
-    lens_screen_distance = 2 * FOCAL
 
     xs = np.linspace(xmin, xmax, res)
     dx = (xmax - xmin) / (res - 1)
@@ -201,30 +197,31 @@ if __name__ == '__main__':
     fx = np.fft.fftfreq(res, d=dx)
     fx = np.fft.fftshift(fx)
 
-    x_screen = fx * LAMBDA * lens_screen_distance
-
     lens_thickness = xs**2 / (2 * FOCAL * DELTA)
 
     Xsc = xmax / 2
     dx = np.linspace(-Xsc, Xsc, 1000)
     list_points = []
-    for i in dx:
-        formula_one = (
+
+    formula_one = (
             EN
-            * np.exp(1j * K * np.sqrt((xs - i) ** 2 + source_lens_distance**2))
-            / np.sqrt((xs - i) ** 2 + source_lens_distance**2)
+            * np.exp(1j * K * np.sqrt(xs ** 2 + source_lens_distance ** 2))
+            / np.sqrt(xs ** 2 + source_lens_distance ** 2)
             * np.exp(-1j * K * (DELTA - 1j * BETA) * lens_thickness)
         )
 
-        # fig, ax1 = plt.subplots()
-        # ax2 = ax1.twinx()
-        # ax1.plot(xs, np.abs(formula_one))
-        # ax2.plot(xs, np.angle(formula_one))
-        # plt.show()
-        # exit(1)
-        # print(np.abs(np.diff(formula_one)))
+    # fig, ax1 = plt.subplots()
+    # ax2 = ax1.twinx()
+    # ax1.plot(xs, np.abs(formula_one))
+    # ax2.plot(xs, np.angle(formula_one))
+    # plt.show()
+    # exit(1)
 
-        formula_two = np.exp(PI * 1j / (LAMBDA * lens_screen_distance) * (xs**2))
+    i = 0
+    for lens_screen_distance in np.arange(1.5 * FOCAL, 2.6 * FOCAL, 0.1 * FOCAL):
+        x_screen = fx * LAMBDA * lens_screen_distance
+
+        formula_two = np.exp(PI * 1j / (LAMBDA * lens_screen_distance) * (xs ** 2))
 
         formula_three = (
             -1j
@@ -234,27 +231,32 @@ if __name__ == '__main__':
                 * PI
                 * 1j
                 / LAMBDA
-                * (lens_screen_distance + (x_screen**2) / 2 / lens_screen_distance)
+                * (lens_screen_distance + (x_screen ** 2) / 2 / lens_screen_distance)
             )
         )
 
         out_source = np.fft.fft(formula_one * formula_two)
         out_source = formula_three * np.fft.fftshift(out_source)
 
-        out_source_abs = np.abs(out_source)
-        list_points.append(np.argmax(out_source_abs))
+        # out_source_abs = np.abs(out_source)
+        # list_points.append(np.argmax(out_source_abs))
 
-        # fig, ax1 = plt.subplots()
-        # ax2 = ax1.twinx()
-        # ax1.plot(x_screen, np.abs(out_source))
-        # ax2.plot(x_screen, np.angle(out_source))
+        i += 1
+        fig, ax1 = plt.subplots()
+        ax2 = ax1.twinx()
+        ax1.plot(x_screen, np.abs(out_source))
+        ax2.plot(x_screen, np.angle(out_source))
+        plt.xlim(-0.1, 0.1)
+        plt.text(0, 4, str(lens_screen_distance))
+        plt.title(f"Initial Graph {i}")
+        # plt.savefig(f"INITIAL/initial_graphs_{i}.png")
         # plt.show()
         # exit(1)
 
     # fig, ax3 = plt.subplots()
     # ax3.plot(dx, list_points)
-    # plt.show()
-    # exit(1)
+    #plt.show()
+    #exit(1)
 
     file_path = "line.csv"
     x, y = read_coordinates(file_path)
@@ -375,12 +377,66 @@ if __name__ == '__main__':
     # f нужно подогнать к 8м
     print(f"Focal length: {focal_length / DELTA}")
 
-    x_new = np.linspace(np.min(xs_combined_sorted), np.max(xs_combined_sorted), 100)
-    y_new = np.interp(x_new, xs_combined_sorted, list_paths_combined_sorted)
+    x_new = np.linspace(np.min(xs_combined_sorted), np.max(xs_combined_sorted), 1000)
+    our_lens_thickness = np.interp(x_new, xs_combined_sorted, list_paths_combined_sorted)
     plt.figure(figsize=(8, 6))
 
-    plt.plot(x_new, y_new)
+    plt.plot(x_new, our_lens_thickness)
 
+    plt.show()
+
+    # Наш конечный результат
+    our_formula_one = (
+            EN
+            * np.exp(1j * K * np.sqrt(xs ** 2 + source_lens_distance ** 2))
+            / np.sqrt(xs ** 2 + source_lens_distance ** 2)
+            * np.exp(-1j * K * (DELTA - 1j * BETA) * our_lens_thickness)
+        )
+
+    # fig, ax1 = plt.subplots()
+    # ax2 = ax1.twinx()
+    # ax1.plot(xs, np.abs(our_formula_one))
+    # ax2.plot(xs, np.angle(our_formula_one))
+    # plt.show()
+    # exit(1)
+
+    i = 0
+    for lens_screen_distance in np.arange(1.5 * FOCAL, 2.6 * FOCAL, 0.1 * FOCAL):
+        x_screen = fx * LAMBDA * lens_screen_distance
+
+        formula_two = np.exp(PI * 1j / (LAMBDA * lens_screen_distance) * (xs ** 2))
+
+        formula_three = (
+            -1j
+            / LAMBDA
+            * np.exp(
+                2
+                * PI
+                * 1j
+                / LAMBDA
+                * (lens_screen_distance + (x_screen ** 2) / 2 / lens_screen_distance)
+            )
+        )
+
+        out_source = np.fft.fft(our_formula_one * formula_two)
+        out_source = formula_three * np.fft.fftshift(out_source)
+
+        # out_source_abs = np.abs(out_source)
+        # list_points.append(np.argmax(out_source_abs))
+        i += 1
+        fig, ax1 = plt.subplots()
+        ax2 = ax1.twinx()
+        ax1.plot(x_screen, np.abs(out_source))
+        ax2.plot(x_screen, np.angle(out_source))
+        plt.xlim(-0.1, 0.1)
+        plt.text(0, 4, str(lens_screen_distance))
+        plt.title(f"Final Graph {i}")
+        #plt.savefig(f"FINAL/final_graphs_{i}.png")
+        # plt.show()
+        # exit(1)
+
+    # fig, ax3 = plt.subplots()
+    # ax3.plot(dx, list_points)
     plt.show()
 
 
